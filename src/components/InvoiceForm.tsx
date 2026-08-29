@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InvoiceDocument } from "@/components/InvoiceDocument";
+import { useStore } from "@/components/StoreProvider";
 import { Field, inputClass } from "@/components/ui";
 import { calcTotals } from "@/lib/calc";
+import { partyFromClient } from "@/lib/clients";
 import { addDays } from "@/lib/dates";
 import { fileToLogoDataUrl } from "@/lib/image";
 import { formatMoney } from "@/lib/money";
@@ -25,6 +27,7 @@ export function InvoiceForm({
   onSave: (invoice: Invoice, options?: { bumpSequence?: boolean }) => void;
 }) {
   const router = useRouter();
+  const { clients } = useStore();
   const [invoice, setInvoice] = useState<Invoice>(initial);
   const [dueDirty, setDueDirty] = useState(!isNew);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +165,43 @@ export function InvoiceForm({
         <section className="card p-5 sm:p-6">
           <h2 className="font-serif text-xl">Client</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {clients.length > 0 ? (
+              <div className="sm:col-span-2">
+                <Field
+                  label="Choose client"
+                  hint="Picking a saved client fills the fields. You can still edit them for this invoice."
+                >
+                  <select
+                    className={inputClass}
+                    value={invoice.clientId ?? ""}
+                    onChange={(event) => {
+                      const id = event.target.value;
+                      if (!id) {
+                        patch({
+                          clientId: undefined,
+                          client: { name: "", email: "", address: "" },
+                        });
+                        return;
+                      }
+                      const chosen = clients.find((item) => item.id === id);
+                      if (!chosen) return;
+                      patch({
+                        clientId: chosen.id,
+                        client: partyFromClient(chosen),
+                      });
+                    }}
+                  >
+                    <option value="">New client — type the details below</option>
+                    {clients.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                        {item.email ? ` · ${item.email}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            ) : null}
             <Field label="Client name">
               <input
                 className={inputClass}

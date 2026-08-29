@@ -25,6 +25,15 @@ export type Party = {
   logoDataUrl?: string;
 };
 
+export type Client = {
+  id: string;
+  name: string;
+  email: string;
+  address: string;
+  notes?: string;
+  isSample?: boolean;
+};
+
 export type Invoice = {
   id: string;
   number: string;
@@ -33,6 +42,7 @@ export type Invoice = {
   dueDate: string;
   currency: CurrencyCode;
   business: Party;
+  clientId?: string;
   client: Party;
   items: LineItem[];
   taxPercent: number;
@@ -58,6 +68,7 @@ export type Settings = {
 export type AppState = {
   settings: Settings;
   invoices: Invoice[];
+  clients: Client[];
 };
 
 export const STORAGE_KEY = "quill-invoices-v1";

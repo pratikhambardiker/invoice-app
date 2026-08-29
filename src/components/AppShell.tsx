@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 const nav = [
   { href: "/", label: "Invoices" },
+  { href: "/clients", label: "Clients" },
   { href: "/settings", label: "Settings" },
 ];
 

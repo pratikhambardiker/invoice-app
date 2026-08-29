@@ -8,17 +8,19 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { upsertClientFromInvoice } from "@/lib/clients";
 import { addDays, todayISO } from "@/lib/dates";
 import { formatInvoiceNumber, nextSequenceFromNumber } from "@/lib/format";
 import { uid } from "@/lib/id";
 import { createSeedState, defaultSettings } from "@/lib/seed";
 import { loadState, saveState } from "@/lib/storage";
-import type { AppState, Invoice, InvoiceStatus, Settings } from "@/lib/types";
+import type { AppState, Client, Invoice, InvoiceStatus, Settings } from "@/lib/types";
 
 type Store = {
   ready: boolean;
   settings: Settings;
   invoices: Invoice[];
+  clients: Client[];
   hasSampleData: boolean;
   revision: number;
   saveSettings: (settings: Settings) => void;
@@ -26,6 +28,8 @@ type Store = {
   deleteInvoice: (id: string) => void;
   duplicateInvoice: (id: string) => Invoice | null;
   setInvoiceStatus: (id: string, status: InvoiceStatus) => void;
+  saveClient: (client: Client) => void;
+  deleteClient: (id: string) => void;
   clearSampleData: () => void;
   resetAll: () => void;
 };
@@ -35,6 +39,7 @@ const StoreContext = createContext<Store | null>(null);
 const SERVER_STATE: AppState = {
   settings: defaultSettings(),
   invoices: [],
+  clients: [],
 };
 
 let memory: AppState | null = null;
@@ -83,14 +88,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const saveInvoice = useCallback(
     (invoice: Invoice, options?: { bumpSequence?: boolean }) => {
       const prev = snapshot();
-      const exists = prev.invoices.some((item) => item.id === invoice.id);
+      const upserted = upsertClientFromInvoice(prev.clients, invoice);
+      const saved = { ...invoice, clientId: upserted.clientId };
+      const exists = prev.invoices.some((item) => item.id === saved.id);
       const invoices = exists
-        ? prev.invoices.map((item) => (item.id === invoice.id ? invoice : item))
-        : [invoice, ...prev.invoices];
+        ? prev.invoices.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...prev.invoices];
       const settings = options?.bumpSequence
-        ? bumpSequenceIfNeeded(prev.settings, invoice.number)
+        ? bumpSequenceIfNeeded(prev.settings, saved.number)
         : prev.settings;
-      commit({ settings, invoices });
+      commit({ ...prev, settings, invoices, clients: upserted.clients });
     },
     [],
   );
@@ -126,6 +133,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       paidAt: undefined,
     };
     commit({
+      ...prev,
       settings: {
         ...prev.settings,
         nextInvoiceSequence: prev.settings.nextInvoiceSequence + 1,
@@ -157,11 +165,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearSampleData = useCallback(() => {
+  const saveClient = useCallback((client: Client) => {
+    const prev = snapshot();
+    const exists = prev.clients.some((item) => item.id === client.id);
+    const clients = exists
+      ? prev.clients.map((item) => (item.id === client.id ? client : item))
+      : [client, ...prev.clients];
+    commit({ ...prev, clients });
+  }, []);
+
+  const deleteClient = useCallback((id: string) => {
     const prev = snapshot();
     commit({
       ...prev,
-      invoices: prev.invoices.filter((item) => !item.isSample),
+      clients: prev.clients.filter((item) => item.id !== id),
+      invoices: prev.invoices.map((item) =>
+        item.clientId === id ? { ...item, clientId: undefined } : item,
+      ),
+    });
+  }, []);
+
+  const clearSampleData = useCallback(() => {
+    const prev = snapshot();
+    const sampleClientIds = new Set(
+      prev.clients.filter((item) => item.isSample).map((item) => item.id),
+    );
+    commit({
+      ...prev,
+      invoices: prev.invoices
+        .filter((item) => !item.isSample)
+        .map((item) =>
+          item.clientId && sampleClientIds.has(item.clientId)
+            ? { ...item, clientId: undefined }
+            : item,
+        ),
+      clients: prev.clients.filter((item) => !item.isSample),
     });
   }, []);
 
@@ -175,13 +213,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ready,
       settings: state.settings,
       invoices: state.invoices,
-      hasSampleData: state.invoices.some((item) => item.isSample),
+      clients: state.clients,
+      hasSampleData:
+        state.invoices.some((item) => item.isSample) ||
+        state.clients.some((item) => item.isSample),
       revision,
       saveSettings,
       saveInvoice,
       deleteInvoice,
       duplicateInvoice,
       setInvoiceStatus,
+      saveClient,
+      deleteClient,
       clearSampleData,
       resetAll,
     }),
@@ -193,6 +236,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteInvoice,
       duplicateInvoice,
       setInvoiceStatus,
+      saveClient,
+      deleteClient,
       clearSampleData,
       resetAll,
     ],

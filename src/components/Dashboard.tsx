@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { reminderEmail } from "@/lib/reminder";
 import { displayStatus } from "@/lib/status";
+import { addAmount, formatTotals } from "@/lib/totals";
 import type { CurrencyCode, DisplayStatus, Invoice } from "@/lib/types";
 
 const FILTERS: { id: "all" | DisplayStatus; label: string }[] = [
@@ -360,22 +361,4 @@ function RowActions({
       </button>
     </div>
   );
-}
-
-function addAmount(
-  totals: Map<CurrencyCode, number>,
-  currency: CurrencyCode,
-  amount: number,
-) {
-  totals.set(currency, (totals.get(currency) ?? 0) + amount);
-}
-
-function formatTotals(
-  totals: Map<CurrencyCode, number>,
-  fallback: CurrencyCode,
-): string {
-  if (totals.size === 0) return formatMoney(0, fallback);
-  return [...totals.entries()]
-    .map(([currency, amount]) => formatMoney(amount, currency))
-    .join(" · ");
 }

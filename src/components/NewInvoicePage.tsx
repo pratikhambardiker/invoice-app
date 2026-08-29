@@ -1,20 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { InvoiceForm } from "@/components/InvoiceForm";
 import { useStore } from "@/components/StoreProvider";
 import { blankInvoice } from "@/lib/seed";
-import type { Invoice } from "@/lib/types";
+import type { Client, Invoice, Settings } from "@/lib/types";
 
 export function NewInvoicePage() {
-  const { ready, settings, saveInvoice } = useStore();
+  const { ready, settings, saveInvoice, clients } = useStore();
+  const searchParams = useSearchParams();
   if (!ready) {
     return <div className="h-96 animate-pulse rounded-2xl bg-white/70" />;
   }
+  const prefill = clients.find((item) => item.id === searchParams.get("client"));
   return (
     <NewInvoiceForm
       settings={settings}
       saveInvoice={saveInvoice}
+      prefill={prefill}
     />
   );
 }
@@ -22,11 +26,13 @@ export function NewInvoicePage() {
 function NewInvoiceForm({
   settings,
   saveInvoice,
+  prefill,
 }: {
-  settings: ReturnType<typeof useStore>["settings"];
+  settings: Settings;
   saveInvoice: ReturnType<typeof useStore>["saveInvoice"];
+  prefill?: Client;
 }) {
-  const [draft] = useState<Invoice>(() => blankInvoice(settings));
+  const [draft] = useState<Invoice>(() => blankInvoice(settings, prefill));
 
   return (
     <div>

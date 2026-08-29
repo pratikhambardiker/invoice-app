@@ -1,3 +1,4 @@
+import { ensureClients } from "./clients";
 import { createSeedState } from "./seed";
 import type { AppState } from "./types";
 import { STORAGE_KEY } from "./types";
@@ -11,7 +12,11 @@ export function loadState(): AppState {
     if (!parsed?.settings || !Array.isArray(parsed.invoices)) {
       return createSeedState();
     }
-    return parsed;
+    return ensureClients({
+      settings: parsed.settings,
+      invoices: parsed.invoices,
+      clients: Array.isArray(parsed.clients) ? parsed.clients : [],
+    });
   } catch {
     return createSeedState();
   }

@@ -5,6 +5,7 @@ A small invoicing app for freelancers and small businesses.
 You can:
 
 - Create and edit invoices
+- Keep a list of clients and see what they owe
 - Preview an invoice that looks ready to send
 - Print it, or save it as a PDF
 - Mark invoices as sent or paid

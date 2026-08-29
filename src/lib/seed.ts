@@ -1,7 +1,8 @@
 import { addDays, todayISO } from "./dates";
 import { formatInvoiceNumber } from "./format";
 import { uid } from "./id";
-import type { AppState, Invoice, Settings } from "./types";
+import { partyFromClient } from "./clients";
+import type { AppState, Client, Invoice, Settings } from "./types";
 
 export function defaultSettings(): Settings {
   return {
@@ -22,6 +23,29 @@ export function createSeedState(): AppState {
   const settings = defaultSettings();
   const today = todayISO();
 
+  const palm: Client = {
+    id: uid(),
+    name: "Palm Court Hotels",
+    email: "accounts@palmcourt.ae",
+    address: "Palm Jumeirah, East Crescent\nDubai, UAE",
+    isSample: true,
+  };
+  const harbor: Client = {
+    id: uid(),
+    name: "Bright Harbor Ventures",
+    email: "finance@brightharbor.com",
+    address: "Index Tower, Unit 2304\nDIFC, Dubai, UAE",
+    isSample: true,
+  };
+  const noor: Client = {
+    id: uid(),
+    name: "Noor Wellness Clinic",
+    email: "ops@noorwellness.ae",
+    address: "Jumeirah Beach Road, Villa 18\nDubai, UAE",
+    isSample: true,
+  };
+  const clients = [palm, harbor, noor];
+
   const invoices: Invoice[] = [
     {
       id: uid(),
@@ -31,11 +55,8 @@ export function createSeedState(): AppState {
       dueDate: addDays(today, -28),
       currency: "AED",
       business: { ...settings.business },
-      client: {
-        name: "Palm Court Hotels",
-        email: "accounts@palmcourt.ae",
-        address: "Palm Jumeirah, East Crescent\nDubai, UAE",
-      },
+      clientId: palm.id,
+      client: partyFromClient(palm),
       items: [
         {
           id: uid(),
@@ -68,11 +89,8 @@ export function createSeedState(): AppState {
       dueDate: addDays(today, 8),
       currency: "AED",
       business: { ...settings.business },
-      client: {
-        name: "Bright Harbor Ventures",
-        email: "finance@brightharbor.com",
-        address: "Index Tower, Unit 2304\nDIFC, Dubai, UAE",
-      },
+      clientId: harbor.id,
+      client: partyFromClient(harbor),
       items: [
         {
           id: uid(),
@@ -104,11 +122,8 @@ export function createSeedState(): AppState {
       dueDate: addDays(today, -11),
       currency: "AED",
       business: { ...settings.business },
-      client: {
-        name: "Noor Wellness Clinic",
-        email: "ops@noorwellness.ae",
-        address: "Jumeirah Beach Road, Villa 18\nDubai, UAE",
-      },
+      clientId: noor.id,
+      client: partyFromClient(noor),
       items: [
         {
           id: uid(),
@@ -140,14 +155,18 @@ export function createSeedState(): AppState {
     },
   ];
 
-  return { settings, invoices };
+  return { settings, invoices, clients };
 }
 
 export function blankLineItem() {
   return { id: uid(), description: "", quantity: 1, unitPrice: 0 };
 }
 
-export function blankInvoice(settings: Settings): Invoice {
+export function blankClient(): Client {
+  return { id: uid(), name: "", email: "", address: "", notes: "" };
+}
+
+export function blankInvoice(settings: Settings, client?: Client): Invoice {
   const issueDate = todayISO();
   return {
     id: uid(),
@@ -157,7 +176,10 @@ export function blankInvoice(settings: Settings): Invoice {
     dueDate: addDays(issueDate, settings.defaultDueInDays || 0),
     currency: settings.currency,
     business: { ...settings.business },
-    client: { name: "", email: "", address: "" },
+    clientId: client?.id,
+    client: client
+      ? partyFromClient(client)
+      : { name: "", email: "", address: "" },
     items: [blankLineItem()],
     taxPercent: settings.defaultTaxPercent,
     discount: 0,

@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { reminderEmail } from "@/lib/reminder";
 import { displayStatus } from "@/lib/status";
-import type { DisplayStatus, Invoice } from "@/lib/types";
+import type { CurrencyCode, DisplayStatus, Invoice } from "@/lib/types";
 
 const FILTERS: { id: "all" | DisplayStatus; label: string }[] = [
   { id: "all", label: "All" },
@@ -54,14 +54,16 @@ export function Dashboard() {
   }, [invoices, query, filter]);
 
   const stats = useMemo(() => {
-    let outstanding = 0;
-    let paid = 0;
+    const outstanding = new Map<CurrencyCode, number>();
+    const paid = new Map<CurrencyCode, number>();
     let overdueCount = 0;
     for (const invoice of invoices) {
       const total = calcTotals(invoice).total;
       const status = displayStatus(invoice);
-      if (status === "paid") paid += total;
-      if (status === "sent" || status === "overdue") outstanding += total;
+      if (status === "paid") addAmount(paid, invoice.currency, total);
+      if (status === "sent" || status === "overdue") {
+        addAmount(outstanding, invoice.currency, total);
+      }
       if (status === "overdue") overdueCount += 1;
     }
     return { outstanding, paid, overdueCount };
@@ -70,8 +72,6 @@ export function Dashboard() {
   if (!ready) {
     return <div className="h-40 animate-pulse rounded-2xl bg-white/70" />;
   }
-
-  const currency = settings.currency;
 
   return (
     <div>
@@ -105,8 +105,14 @@ export function Dashboard() {
       </div>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <Stat label="Outstanding" value={formatMoney(stats.outstanding, currency)} />
-        <Stat label="Paid (all time)" value={formatMoney(stats.paid, currency)} />
+        <Stat
+          label="Outstanding"
+          value={formatTotals(stats.outstanding, settings.currency)}
+        />
+        <Stat
+          label="Paid (all time)"
+          value={formatTotals(stats.paid, settings.currency)}
+        />
         <Stat
           label="Overdue"
           value={`${stats.overdueCount} invoice${stats.overdueCount === 1 ? "" : "s"}`}
@@ -354,4 +360,22 @@ function RowActions({
       </button>
     </div>
   );
+}
+
+function addAmount(
+  totals: Map<CurrencyCode, number>,
+  currency: CurrencyCode,
+  amount: number,
+) {
+  totals.set(currency, (totals.get(currency) ?? 0) + amount);
+}
+
+function formatTotals(
+  totals: Map<CurrencyCode, number>,
+  fallback: CurrencyCode,
+): string {
+  if (totals.size === 0) return formatMoney(0, fallback);
+  return [...totals.entries()]
+    .map(([currency, amount]) => formatMoney(amount, currency))
+    .join(" · ");
 }
